@@ -223,9 +223,9 @@ RESET:
     sta CursorAddr+1
 
 Frame:
-    jsr ReadKeyboard
-    ;jsr JustReadKeyboard
-    ;jsr JustDecodeKeyboard
+    ;jsr ReadKeyboard
+    jsr JustReadKeyboard
+    jsr JustDecodeKeyboard
 
     ldx #0
     ldy #0

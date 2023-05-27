@@ -108,7 +108,9 @@ JustReadKeyboard:
 @readLoop:
     lda #4
     sta $4016
+    stx TmpX
     jsr KeyboardWait
+    ldx TmpX
 
     lda $4017
     asl a
@@ -123,6 +125,7 @@ JustReadKeyboard:
     lsr a
     and #$0F
     ora KeyboardThisFrame, x
+    eor #$FF
     sta KeyboardThisFrame, x
 
     inx
@@ -133,30 +136,6 @@ JustReadKeyboard:
 ; Decodes the keys in the two keyboard
 ; arrays and sends pressed/held events.
 JustDecodeKeyboard:
-;    ldx #0 ; key id / "scancode"
-;    ldy #0 ; byte in array
-;    lda #%1000_0000
-;    sta TmpA
-;@rowLoop:
-;@colLoop:
-;    lda TmpA
-;    and KeyboardThisFrame, y
-;    sta TmpX
-;    beq @nextcol
-;    ; key pressed
-;    and KeyboardLastFrame, y
-;    bne :+ ; key is being held from last frame
-;    ; no longer pressed.
-;    jmp @nextcol
-;:
-;    lda TmpX
-;    sty TmpY
-;    inc HeldIdx
-;    ldy HeldIdx
-;    sta KeyboardHeld, y
-;    ldy TmpY
-;@nextcol:
-
     ; clear previous pressed/held values
     lda #$FF
     sta HeldIdx
@@ -172,6 +151,8 @@ JustDecodeKeyboard:
     ldx #0
     stx TmpZ
 @loop:
+    ;ldx TmpZ
+
     ; held keys
     lda KeyboardLastFrame, x
     and KeyboardThisFrame, x
@@ -188,16 +169,15 @@ JustDecodeKeyboard:
     sta TmpA
 @keyloop:
 
-    lda TmpA
-    and TmpX
-    beq @pressed
+    lda TmpA    ; load mask
+    and TmpX    ; and with Held
+    beq @pressed ; not held
     ; held
-    stx TmpZ
+    lda TmpZ
     ; X * 8
-    txa
-    lsr a
-    lsr a
-    lsr a
+    asl a
+    asl a
+    asl a
     sty TmpB
     clc ; (X * 8) + Y
     adc TmpB
@@ -215,11 +195,11 @@ JustDecodeKeyboard:
     and TmpY
     beq @nextkey
 
+    lda TmpZ
     ; X * 8
-    txa
-    lsr a
-    lsr a
-    lsr a
+    asl a
+    asl a
+    asl a
     sty TmpB
     clc ; (X * 8) + Y
     adc TmpB
@@ -242,26 +222,14 @@ JustDecodeKeyboard:
     bne @loop
 
     ; check for shift key
-    stx Shifted
-    lda #$10
-    .repeat 8, i
-    and KeyboardHeld+i
-    .endrepeat
+    lda KeyboardLastFrame+0 ; rshift
+    ora KeyboardThisFrame+0
+    lsr a
+    ora KeyboardLastFrame+7 ; lshift
+    ora KeyboardThisFrame+7
+    and #%0000_0001
     beq :+
-    sta Shifted
-:
 
-    lda #$10
-    .repeat 8, i
-    and KeyboardPressed+i
-    .endrepeat
-    beq :+
-    sta Shifted
-:
-
-    ; Pick the correctly shifted table
-    lda Shifted
-    beq :+
     lda #.lobyte(KeyboardLayoutStd_Shifted)
     sta AddressPointer1+0
     lda #.hibyte(KeyboardLayoutStd_Shifted)
@@ -276,17 +244,39 @@ JustDecodeKeyboard:
 
     ; translate "scan codes" to ASCII.
     ldx #0
-:
+    lda HeldIdx
+    sta TmpX
+@heldAsciiLoop:
+    lda TmpX
+    bmi @heldAsciiDone
+    dec TmpX
+
     ldy KeyboardHeld, x
     lda (AddressPointer1), y
     sta KeyboardHeld, x
 
+    inx
+    cmp #8
+    bne @heldAsciiLoop
+@heldAsciiDone:
+
+    ldx #0
+    lda PressedIdx
+    sta TmpX
+@pressedAsciiLoop:
+    lda TmpX
+    bmi @pressedAsciiDone
+    dec TmpX
+
     ldy KeyboardPressed, x
     lda (AddressPointer1), y
     sta KeyboardPressed, x
+
     inx
-    cpx #8
-    bne :-
+    cmp #8
+    bne @pressedAsciiLoop
+@pressedAsciiDone:
+
     rts
 
 ReadKeyboard:
