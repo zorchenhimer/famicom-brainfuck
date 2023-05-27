@@ -337,20 +337,6 @@ EngineStateInitCount = (* - EngineStateInits) / 2
     .error "EngineStateInitCount and EngineStateCount mismatch"
 .endif
 
-EditorLinesStart:
-    .repeat EditorLineCount, i
-    .word EditorAbsStart+(i*32)
-    .endrepeat
-
-EditorCursorRows:
-    .repeat EditorLineCount, i
-    .byte (8*3)+(i*8)-1
-    .endrepeat
-EditorCursorCols:
-    .repeat EditorLineLength, i
-    .byte (8*2)+(i*8)
-    .endrepeat
-
 PaletteData:
     .repeat 4
     .byte $0F, $20, $10, $2D

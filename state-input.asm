@@ -35,54 +35,25 @@ State_Input:
 @actionLoop:
     lda KeyboardPressed, x
     beq @actionNext
+    cmp #$20
+    bcs @actionNext
 
-    cmp #$11 ; help
-    bne :+
-    lda #1
-    jmp ChangeState
-:
+    asl a
+    tax
+    lda KeyFunctions+0, x
+    ora KeyFunctions+1, x
+    beq @actionNext
 
-    cmp #$0A ; return
-    bne :+
-    lda EditorRow
-    cmp #EditorLineCount-1
-    beq :+
-    inc EditorRow
-    lda #0
-    sta EditorCol
-:
-    cmp #$03 ; up
-    bne :+
-    lda EditorRow
-    beq :+
-    dec EditorRow
-:
+    lda #.hibyte(@actionNext-1)
+    pha
+    lda #.lobyte(@actionNext-1)
+    pha
 
-    lda KeyboardPressed, x
-    cmp #$02 ; right
-    bne :+
-    lda EditorCol
-    cmp #EditorLineLength-1
-    beq :+
-    inc EditorCol
-:
-
-    lda KeyboardPressed, x
-    cmp #$04 ; down
-    bne :+
-    lda EditorRow
-    cmp #EditorLineCount-1
-    beq :+
-    inc EditorRow
-:
-
-    lda KeyboardPressed, x
-    cmp #$01 ; left
-    bne :+
-    lda EditorCol
-    beq :+
-    dec EditorCol
-:
+    lda KeyFunctions+0, x
+    sta AddressPointer1+0
+    lda KeyFunctions+1, x
+    sta AddressPointer1+1
+    jmp (AddressPointer1)
 
 @actionNext:
     inx
@@ -91,7 +62,7 @@ State_Input:
     bcc @actionLoop
 
     ldx #0
-    ldy #0
+    ;ldy #0
 @keyloop:
     lda KeyboardPressed, x
     beq @done
@@ -99,10 +70,14 @@ State_Input:
     cmp #$20
     bcc @nextkey
 
-    inc BufferedLen
     stx TmpX
 
     ; Get PPU address of cursor
+
+    ldx BufferedLen
+    ldy Mult3, x
+    inc BufferedLen
+
     lda EditorRow
     asl a
     tax
@@ -123,7 +98,6 @@ State_Input:
 
     lda KeyboardPressed, x
     sta BufferedTiles, y
-    iny
 
     ; When we hit the end, don't move the cursor
     ; but allow input.  This input will
@@ -167,3 +141,110 @@ State_Input:
     lda #%0010_0000
     sta SpriteZero+2
     rts
+
+KeyDelete:
+    ldy EditorCol
+    bne :+
+    rts
+:
+    dey
+    sty EditorCol
+    lda EditorRow
+    asl a
+
+    ldx BufferedLen
+    ldy Mult3, x
+    inc BufferedLen
+
+    tax
+    clc
+    lda EditorLinesStart+0, x
+    adc EditorCol
+    sta TmpY
+    lda EditorLinesStart+1, x
+    adc #0
+    sta BufferedTiles, y
+    iny
+    lda TmpY
+    sta BufferedTiles, y
+    iny
+    lda #' '
+    sta BufferedTiles, y
+    rts
+
+KeyLeft:
+    lda EditorCol
+    beq :+
+    dec EditorCol
+:   rts
+
+KeyRight:
+    lda EditorCol
+    cmp #EditorLineLength-1
+    beq :+
+    inc EditorCol
+:   rts
+
+KeyUp:
+    lda EditorRow
+    beq :+
+    dec EditorRow
+:   rts
+
+KeyDown:
+    lda EditorRow
+    cmp #EditorLineCount-1
+    beq :+
+    inc EditorRow
+:   rts
+
+KeyReturn:
+    lda EditorRow
+    cmp #EditorLineCount-1
+    beq :+
+    inc EditorRow
+    lda #0
+    sta EditorCol
+:   rts
+
+KeyHelp:
+    lda #1
+    jmp ChangeState
+
+KeyFunctions:
+    .word $0000 ; null
+    .word KeyLeft
+    .word KeyRight
+    .word KeyUp
+    .word KeyDown
+    .word $0000   ; $05
+    .word $0000
+    .word $0000
+    .word KeyDelete
+    .word $0000
+    .word KeyReturn ; $0A
+    .word KeyHelp
+
+    ; $0C-$19
+    .repeat 8
+    .word $0000
+    .endrepeat
+
+EditorLinesStart:
+    .repeat EditorLineCount, i
+    .word EditorAbsStart+(i*32)
+    .endrepeat
+
+EditorCursorRows:
+    .repeat EditorLineCount, i
+    .byte (8*3)+(i*8)-1
+    .endrepeat
+EditorCursorCols:
+    .repeat EditorLineLength, i
+    .byte (8*2)+(i*8)
+    .endrepeat
+
+Mult3:
+    .repeat 8, i
+    .byte 3*i
+    .endrepeat
