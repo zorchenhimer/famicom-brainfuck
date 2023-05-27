@@ -30,10 +30,11 @@ State_Input:
     beq :+
 :
 
+    ; Handle actions (movement, etc) before characters.
     ldx #0
-@cursorLoop:
+@actionLoop:
     lda KeyboardPressed, x
-    beq @cursorNext
+    beq @actionNext
 
     cmp #$11 ; help
     bne :+
@@ -41,6 +42,15 @@ State_Input:
     jmp ChangeState
 :
 
+    cmp #$0A ; return
+    bne :+
+    lda EditorRow
+    cmp #EditorLineCount-1
+    beq :+
+    inc EditorRow
+    lda #0
+    sta EditorCol
+:
     cmp #$03 ; up
     bne :+
     lda EditorRow
@@ -74,11 +84,11 @@ State_Input:
     dec EditorCol
 :
 
-@cursorNext:
+@actionNext:
     inx
     ;cpx PressedIdx
     cpx #8
-    bcc @cursorLoop
+    bcc @actionLoop
 
     ldx #0
     ldy #0
