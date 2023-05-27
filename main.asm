@@ -37,7 +37,7 @@ CursorAddr: .res 2
 Shifted: .res 1
 
 BufferedTiles: .res 8*3
-BufferedLen: .res 1
+BufferedLen: .res 1 ; sets of three bytes (addr & data)
 
 KeyboardLastFrame: .res 9
 KeyboardThisFrame: .res 9
@@ -90,24 +90,27 @@ NMI:
     ldx BufferedLen
     beq @bufferDone
     ldy #0
-    lda CursorAddr+1
+
+@bufferLoop:
+    lda BufferedTiles, y
     sta $2006
-    lda CursorAddr+0
+    iny
+    lda BufferedTiles, y
     sta $2006
-:
+    iny
     lda BufferedTiles, y
     sta $2007
     iny
     dex
-    bne :-
+    bne @bufferLoop
 
-    clc
-    lda CursorAddr+0
-    adc BufferedLen
-    sta CursorAddr+0
-    lda CursorAddr+1
-    adc #0
-    sta CursorAddr+1
+    ;clc
+    ;lda CursorAddr+0
+    ;adc BufferedLen
+    ;sta CursorAddr+0
+    ;lda CursorAddr+1
+    ;adc #0
+    ;sta CursorAddr+1
 
 @bufferDone:
 
@@ -229,39 +232,60 @@ Frame:
     beq @done
 
     cmp #$20
-    bcc :+
+    bcc @nextkey
 
-    inc EditorCol
-    lda EditorCol
-    cmp #EditorLineLength
-    bcc :+
-    ; wrap around
-    inc EditorRow
-    lda EditorRow
-    asl a
-    tax
+    inc BufferedLen
 
-    lda EditorLinesStart+0, x
+    lda CursorAddr+1
     sta BufferedTiles, y
     iny
-    lda EditorLinesStart+1, x
-    sta BufferedTiles, y
-    jmp :++
-:
     lda CursorAddr+0
     sta BufferedTiles, y
     iny
-    lda CursorAddr+1
-    sta BufferedTiles, y
-:
-
+    lda KeyboardPressed, x
     sta BufferedTiles, y
     iny
+
+    clc
+    lda CursorAddr+0
+    adc #1
+    sta CursorAddr+0
+    lda CursorAddr+1
+    adc #0
+    sta CursorAddr+1
+
+;    inc EditorCol
+;    lda EditorCol
+;    cmp #EditorLineLength
+;    bcc :+
+;    ; wrap around
+;    inc EditorRow
+;    lda EditorRow
+;    asl a
+;    tax
+;
+;    lda EditorLinesStart+0, x
+;    sta BufferedTiles, y
+;    iny
+;    lda EditorLinesStart+1, x
+;    sta BufferedTiles, y
+;    jmp :++
+;:
+;    lda CursorAddr+0
+;    sta BufferedTiles, y
+;    iny
+;    lda CursorAddr+1
+;    sta BufferedTiles, y
+;:
+;    sta BufferedTiles, y
+;    iny
+;    inx
+
+@nextkey:
     inx
     cpx #8
     bne @keyloop
 @done:
-    sty BufferedLen
 
     jsr WaitForNMI
     jmp Frame
