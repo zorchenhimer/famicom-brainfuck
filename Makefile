@@ -9,6 +9,9 @@ LDFLAGS = -C $(NESCFG) --dbgfile bin/$(NAME).dbg -m bin/$(NAME).map
 
 SOURCES = main.asm \
 		  keyboard.asm \
+		  state-help.asm \
+		  state-input.asm \
+		  help.i \
 		  border.i
 
 CHR = font.chr
@@ -35,6 +38,9 @@ images/%.bmp: images/%.aseprite
 
 border.i: layouts/screens.tmx
 	go run convert-screen.go --layer border --fill 0 $< $@
+
+help.i: layouts/screens.tmx
+	go run convert-screen.go --layer help --fill 0 $< $@
 
 font.chr: images/font.bmp
 	$(CHRUTIL) -o $@ $<

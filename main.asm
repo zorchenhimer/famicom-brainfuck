@@ -44,6 +44,8 @@ BufferedLen: .res 1 ; sets of three bytes (addr & data)
 KeyboardLastFrame: .res 9
 KeyboardThisFrame: .res 9
 
+EngineState: .res 1
+
 .segment "OAM"
 SpriteZero: .res 4
 Sprites: .res (64*4)-4
@@ -105,14 +107,6 @@ NMI:
     iny
     dex
     bne @bufferLoop
-
-    ;clc
-    ;lda CursorAddr+0
-    ;adc BufferedLen
-    ;sta CursorAddr+0
-    ;lda CursorAddr+1
-    ;adc #0
-    ;sta CursorAddr+1
 
 @bufferDone:
 
@@ -182,173 +176,71 @@ RESET:
     lda #$02
     sta $4014
 
-    lda #.lobyte(BorderTileData)
-    sta AddressPointer1+0
-    lda #.hibyte(BorderTileData)
-    sta AddressPointer1+1
-
-    lda #$20
-    sta AddressPointer2+1
-    lda #$00
-    sta AddressPointer2+0
-
-    jsr DrawTiledData
-
-    lda #.lobyte(PaletteData)
-    sta AddressPointer1+0
-    lda #.hibyte(PaletteData)
-    sta AddressPointer1+1
-    ldx #32
-
-    jsr WritePaletteData
-
-    lda #%0001_1110
-    sta $2001
     lda #%1000_0000
     sta $2000
 
-    jsr WaitForNMI
-
     lda #0
-    ldx #0
-:
-    sta KeyboardStatus, x
-    inx
-    cpx #72
-    bne :-
-
-    lda #.lobyte(EditorAbsStart)
-    sta CursorAddr+0
-    lda #.hibyte(EditorAbsStart)
-    sta CursorAddr+1
+    jmp ChangeState
 
 Frame:
-    ;jsr ReadKeyboard
-    jsr JustReadKeyboard
-    jsr JustDecodeKeyboard
-
-    ldx #0
-@cursorLoop:
-    lda KeyboardPressed, x
-    beq @cursorNext
-
-    cmp #$03 ; up
-    bne :+
-    lda EditorRow
+    lda EngineState
+    cmp #EngineStateCount
     beq :+
-    dec EditorRow
+    bcc :+
+    lda #0 ; default to input state
 :
-
-    lda KeyboardPressed, x
-    cmp #$02 ; right
-    bne :+
-    lda EditorCol
-    cmp #EditorLineLength-1
-    beq :+
-    inc EditorCol
-:
-
-    lda KeyboardPressed, x
-    cmp #$04 ; down
-    bne :+
-    lda EditorRow
-    cmp #EditorLineCount-1
-    beq :+
-    inc EditorRow
-:
-
-    lda KeyboardPressed, x
-    cmp #$01 ; left
-    bne :+
-    lda EditorCol
-    beq :+
-    dec EditorCol
-:
-
-@cursorNext:
-    inx
-    ;cpx PressedIdx
-    cpx #8
-    bcc @cursorLoop
-
-    ldx #0
-    ldy #0
-@keyloop:
-    lda KeyboardPressed, x
-    beq @done
-
-    cmp #$20
-    bcc @nextkey
-
-    inc BufferedLen
-    stx TmpX
-
-    ; Get PPU address of cursor
-    lda EditorRow
     asl a
     tax
-    lda EditorLinesStart+0, x
-    clc
-    adc EditorCol
-    sta TmpY
-    lda EditorLinesStart+1, x
-    adc #0
-    sta BufferedTiles, y
-    iny
+    lda EngineStates+0, x
+    sta AddressPointer1+0
+    lda EngineStates+1, x
+    sta AddressPointer1+1
 
-    lda TmpY
-    sta BufferedTiles, y
-    iny
+    lda #.hibyte(FrameReturnAddr)
+    pha
+    lda #.lobyte(FrameReturnAddr)
+    pha
 
-    ldx TmpX
+    jmp (AddressPointer1)
+FrameReturnAddr = * - 1
 
-    lda KeyboardPressed, x
-    sta BufferedTiles, y
-    iny
+;FrameDone:
+    jsr WaitForNMI
+    jmp Frame
 
-    ; When we hit the end, don't move the cursor
-    ; but allow input.  This input will
-    ; overwrite the last character.
-    inc EditorCol
-    lda EditorCol
-    cmp #EditorLineLength
+; Target state in A
+ChangeState:
+    cmp #EngineStateCount
     bcc :+
-    lda #0
-    sta EditorCol
-
-    inc EditorRow
-    lda EditorRow
-    cmp #EditorLineCount
-    bcc :+
-
-    dec EditorRow
-    lda #EditorLineLength-1
-    sta EditorCol
+    ;
+    ; invalid state
+    ;
+    brk
 :
+    sta EngineState
+    asl a
+    tax
+    lda EngineStateInits+0, x
+    sta AddressPointer1+0
+    lda EngineStateInits+1, x
+    sta AddressPointer1+1
 
-@nextkey:
-    inx
-    cpx #8
-    bne @keyloop
-@done:
-
-    ; position cursor sprite
-    ldx EditorRow
-    lda EditorCursorRows, x
-    sta SpriteZero+0
-
-    ldx EditorCol
-    lda EditorCursorCols, x
-    sta SpriteZero+3
-
-    lda #CusrorTile
-    sta SpriteZero+1
-
-    ; Put it behind the text
-    lda #%0010_0000
-    sta SpriteZero+2
+    lda #.hibyte(StateReturnAddr)
+    pha
+    lda #.lobyte(StateReturnAddr)
+    pha
 
     jsr WaitForNMI
+    lda #%0000_0000
+    sta $2001
+
+    jmp (AddressPointer1)
+StateReturnAddr = * - 1
+
+    jsr WaitForNMI
+    lda #%0001_1110
+    sta $2001
+
     jmp Frame
 
 WaitForNMI:
@@ -410,6 +302,34 @@ WritePaletteData:
     dex
     bne @loop
     rts
+
+.enum State
+    Input
+    Help
+.endenum
+
+    .include "state-input.asm"
+    .include "state-help.asm"
+
+; Frame code for each state
+EngineStates:
+    .word State_Input
+    .word State_Help
+    ;.word State_Complie
+    ;.word State_Run
+    ;.word State_Debug
+EngineStateCount = (* - EngineStates) / 2
+
+EngineStateInits:
+    .word Init_StateInput
+    .word Init_StateHelp
+    ;.word Init_StateComplie
+    ;.word Init_StateRun
+    ;.word Init_StateDebug
+EngineStateInitCount = (* - EngineStateInits) / 2
+.if EngineStateInitCount <> EngineStateCount
+    .error "EngineStateInitCount and EngineStateCount mismatch"
+.endif
 
 EditorLinesStart:
     .repeat EditorLineCount, i
