@@ -280,18 +280,10 @@ Frame:
     cmp #$20
     bcc @nextkey
 
-    lda EditorRow
-    cmp #EditorLineCount
-    bne :+
-    lda EditorCol
-    cmp #EditorLineLength
-    bne :+
-    jmp @done   ; too much crap on screen
-:
-
     inc BufferedLen
     stx TmpX
 
+    ; Get PPU address of cursor
     lda EditorRow
     asl a
     tax
@@ -314,12 +306,23 @@ Frame:
     sta BufferedTiles, y
     iny
 
+    ; When we hit the end, don't move the cursor
+    ; but allow input.  This input will
+    ; overwrite the last character.
     inc EditorCol
     lda EditorCol
     cmp #EditorLineLength
     bcc :+
-    inc EditorRow
     lda #0
+    sta EditorCol
+
+    inc EditorRow
+    lda EditorRow
+    cmp #EditorLineCount
+    bcc :+
+
+    dec EditorRow
+    lda #EditorLineLength-1
     sta EditorCol
 :
 
@@ -341,6 +344,7 @@ Frame:
     lda #CusrorTile
     sta SpriteZero+1
 
+    ; Put it behind the text
     lda #%0010_0000
     sta SpriteZero+2
 
