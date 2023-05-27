@@ -228,6 +228,50 @@ Frame:
     jsr JustDecodeKeyboard
 
     ldx #0
+@cursorLoop:
+    lda KeyboardPressed, x
+    beq @cursorNext
+
+    cmp #$03 ; up
+    bne :+
+    lda EditorRow
+    beq :+
+    dec EditorRow
+:
+
+    lda KeyboardPressed, x
+    cmp #$02 ; right
+    bne :+
+    lda EditorCol
+    cmp #EditorLineLength-1
+    beq :+
+    inc EditorCol
+:
+
+    lda KeyboardPressed, x
+    cmp #$04 ; down
+    bne :+
+    lda EditorRow
+    cmp #EditorLineCount-1
+    beq :+
+    inc EditorRow
+:
+
+    lda KeyboardPressed, x
+    cmp #$01 ; left
+    bne :+
+    lda EditorCol
+    beq :+
+    dec EditorCol
+:
+
+@cursorNext:
+    inx
+    ;cpx PressedIdx
+    cpx #8
+    bcc @cursorLoop
+
+    ldx #0
     ldy #0
 @keyloop:
     lda KeyboardPressed, x
