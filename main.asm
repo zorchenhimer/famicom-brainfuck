@@ -180,7 +180,7 @@ RESET:
     sta $2000
 
     lda #0
-    jmp ChangeState
+    jmp ChangeState_NoPla
 
 Frame:
     lda EngineState
@@ -210,6 +210,12 @@ FrameReturnAddr = * - 1
 
 ; Target state in A
 ChangeState:
+    ; Get rid of return addr here
+    ; so the caller doesn't need to.
+    pla
+    pla
+
+ChangeState_NoPla:
     cmp #EngineStateCount
     bcc :+
     ;

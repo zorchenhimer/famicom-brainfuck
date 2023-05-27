@@ -37,10 +37,6 @@ State_Help:
 
     cmp #$11
     bne @next
-    ; get rid of return addr
-    pla
-    pla
-
     lda #0
     jmp ChangeState
 @next:

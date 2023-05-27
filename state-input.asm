@@ -37,10 +37,6 @@ State_Input:
 
     cmp #$11 ; help
     bne :+
-
-    ; get rid of retrun addr
-    pla
-    pla
     lda #1
     jmp ChangeState
 :
