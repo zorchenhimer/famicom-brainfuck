@@ -16,6 +16,8 @@ EditorLineLength = 28
 EditorLineCount = 24
 EditorAbsStart = $2062
 
+CusrorTile = $84
+
 .segment "ZEROPAGE"
 Sleeping: .res 1
 KeyboardRead: .res 1
@@ -196,7 +198,7 @@ RESET:
     sta AddressPointer1+0
     lda #.hibyte(PaletteData)
     sta AddressPointer1+1
-    ldx #16
+    ldx #32
 
     jsr WritePaletteData
 
@@ -234,58 +236,69 @@ Frame:
     cmp #$20
     bcc @nextkey
 
-    inc BufferedLen
+    lda EditorRow
+    cmp #EditorLineCount
+    bne :+
+    lda EditorCol
+    cmp #EditorLineLength
+    bne :+
+    jmp @done   ; too much crap on screen
+:
 
-    lda CursorAddr+1
+    inc BufferedLen
+    stx TmpX
+
+    lda EditorRow
+    asl a
+    tax
+    lda EditorLinesStart+0, x
+    clc
+    adc EditorCol
+    sta TmpY
+    lda EditorLinesStart+1, x
+    adc #0
     sta BufferedTiles, y
     iny
-    lda CursorAddr+0
+
+    lda TmpY
     sta BufferedTiles, y
     iny
+
+    ldx TmpX
+
     lda KeyboardPressed, x
     sta BufferedTiles, y
     iny
 
-    clc
-    lda CursorAddr+0
-    adc #1
-    sta CursorAddr+0
-    lda CursorAddr+1
-    adc #0
-    sta CursorAddr+1
-
-;    inc EditorCol
-;    lda EditorCol
-;    cmp #EditorLineLength
-;    bcc :+
-;    ; wrap around
-;    inc EditorRow
-;    lda EditorRow
-;    asl a
-;    tax
-;
-;    lda EditorLinesStart+0, x
-;    sta BufferedTiles, y
-;    iny
-;    lda EditorLinesStart+1, x
-;    sta BufferedTiles, y
-;    jmp :++
-;:
-;    lda CursorAddr+0
-;    sta BufferedTiles, y
-;    iny
-;    lda CursorAddr+1
-;    sta BufferedTiles, y
-;:
-;    sta BufferedTiles, y
-;    iny
-;    inx
+    inc EditorCol
+    lda EditorCol
+    cmp #EditorLineLength
+    bcc :+
+    inc EditorRow
+    lda #0
+    sta EditorCol
+:
 
 @nextkey:
     inx
     cpx #8
     bne @keyloop
 @done:
+
+    ; position cursor sprite
+    ldx EditorRow
+    lda EditorCursorRows, x
+    sta SpriteZero+0
+
+    ldx EditorCol
+    lda EditorCursorCols, x
+    sta SpriteZero+3
+
+    lda #CusrorTile
+    sta SpriteZero+1
+
+    lda #%0010_0000
+    sta SpriteZero+2
 
     jsr WaitForNMI
     jmp Frame
@@ -341,6 +354,7 @@ WritePaletteData:
     lda #$00
     sta $2006
 
+    ldy #0
 @loop:
     lda (AddressPointer1), Y
     sta $2007
@@ -350,29 +364,27 @@ WritePaletteData:
     rts
 
 EditorLinesStart:
-    .repeat 24, i
+    .repeat EditorLineCount, i
     .word EditorAbsStart+(i*32)
     .endrepeat
 
 EditorCursorRows:
-    .repeat EditorLineLength, i
-    .byte 16+(i*8)
+    .repeat EditorLineCount, i
+    .byte (8*3)+(i*8)-1
     .endrepeat
 EditorCursorCols:
-    .repeat EditorLineCount, i
-    .byte 24+(i*8)
+    .repeat EditorLineLength, i
+    .byte (8*2)+(i*8)
     .endrepeat
 
-
-
-;EditorLinesEnd:
-;    .repeat 24, i
-;    .word EditorAbsStart+28+(i*32)
-;    .endrepeat
-
 PaletteData:
-    .repeat 8
+    .repeat 4
     .byte $0F, $20, $10, $2D
+    .endrepeat
+
+SpritePaletteData:
+    .repeat 4
+    .byte $0F, $27, $17, $07
     .endrepeat
 
 BorderTileData:
