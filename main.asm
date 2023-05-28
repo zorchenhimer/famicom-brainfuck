@@ -52,8 +52,6 @@ SpriteZero: .res 4
 Sprites: .res (64*4)-4
 .segment "BSS"
 
-KeyboardStatus: .res 72
-
 EditorRow: .res 1
 EditorCol: .res 1
 
