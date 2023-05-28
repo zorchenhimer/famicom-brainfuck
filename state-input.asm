@@ -61,6 +61,10 @@ Init_StateInput:
     ldy #$12
     jsr WriteBottom
 
+    lda #Text::Run
+    ldx #18
+    ldy #$13
+    jsr WriteBottom
     rts
 
 State_Input:
@@ -285,6 +289,10 @@ KeyMenu:
     lda #State::Menu
     jmp ChangeState
 
+KeyRun:
+    lda #State::Run
+    jmp ChangeState
+
 KeyFunctions:
     .word $0000 ; null
     .word KeyLeft
@@ -305,6 +313,7 @@ KeyFunctions:
     .word $0000
     .word KeyHelp
     .word KeyMenu
+    .word KeyRun
 
     ; $0C-$19
     .repeat 8

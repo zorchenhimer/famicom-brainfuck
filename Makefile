@@ -14,6 +14,7 @@ SOURCES = main.asm \
 		  state-menu.asm \
 		  state-load.asm \
 		  state-clear.asm \
+		  state-run.asm \
 		  help.i \
 		  border.i
 

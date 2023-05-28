@@ -42,6 +42,7 @@ Help
 Load
 Menu
 Pause
+Run
 Running
 Step
 Stop
@@ -79,6 +80,9 @@ PreviousState: .res 1
 MenuState: .res 10 ; states of items
 MenuSelect: .res 1 ; current selection
 
+; Pointer to code for after NMI, but separate from frame
+PostNMI: .res 2
+
 .segment "OAM"
 SpriteZero: .res 4
 Sprites: .res (64*4)-4
@@ -98,8 +102,8 @@ EditorCol: .res 1
 .segment "CHR1"
 
 .segment "PRGRAM"
-Code: .res EditorLineLength*EditorLineCount
-Compiled: .res EditorLineLength*EditorLineCount
+Code: .res EditorLineLength*EditorLineCount+1
+Compiled: .res EditorLineLength*EditorLineCount+1
 .segment "CELRAM"
 Cells: .res $100
 
@@ -150,6 +154,18 @@ NMI:
     lda #%1000_0000
     sta $2000
 
+    lda PostNMI+0
+    ora PostNMI+1
+    beq @nmiDone
+
+    lda #.hibyte(@nmiDone-1)
+    pha
+    lda #.lobyte(@nmiDone-1)
+    pha
+
+    jmp (PostNMI)
+
+@nmiDone:
     pla
     tay
     pla
@@ -272,6 +288,10 @@ ChangeState:
     lda #.lobyte(StateReturnAddr)
     pha
 
+    lda #0
+    sta PostNMI+0
+    sta PostNMI+1
+
     jsr WaitForNMI
     lda #%0000_0000
     sta $2001
@@ -286,6 +306,9 @@ StateReturnAddr = * - 1
     jmp Frame
 
 WaitForNMI:
+    lda #0
+    sta Sleeping
+
 :   bit Sleeping
     bpl :-
     lda #0
@@ -365,6 +388,10 @@ ClearCodeRam:
     inx
     cpx #EditorLineCount
     bcc @row
+
+    lda #0
+    sta (AddressPointer1), y
+
     rts
 
 ClearCells:
@@ -375,61 +402,6 @@ ClearCells:
     dex
     bne :-
     rts
-
-.enum State
-    Menu
-    Input
-    Help
-    Load
-    Clear
-.endenum
-
-    .include "keyboard.asm"
-    .include "state-input.asm"
-    .include "state-help.asm"
-    .include "state-menu.asm"
-    .include "state-clear.asm"
-    .include "state-load.asm"
-
-; Frame code for each state
-EngineStates:
-    .word State_Menu
-    .word State_Input
-    .word State_Help
-    .word State_Load
-    .word State_Clear
-    ;.word State_Complie
-    ;.word State_Run
-    ;.word State_Debug
-EngineStateCount = (* - EngineStates) / 2
-
-EngineStateInits:
-    .word Init_Menu
-    .word Init_StateInput
-    .word Init_StateHelp
-    .word Init_Load
-    .word Init_Clear
-    ;.word Init_StateComplie
-    ;.word Init_StateRun
-    ;.word Init_StateDebug
-EngineStateInitCount = (* - EngineStateInits) / 2
-.if EngineStateInitCount <> EngineStateCount
-    .error "EngineStateInitCount and EngineStateCount mismatch"
-.endif
-
-PaletteData:
-    .repeat 4
-    .byte $0F, $20, $10, $2D
-    .endrepeat
-
-SpritePaletteData:
-    .repeat 4
-    .byte $0F, $27, $17, $07
-    .endrepeat
-
-BorderTileData:
-    .include "border.i"
-    .byte $00
 
 ; Text index in A
 WriteTitle:
@@ -504,6 +476,65 @@ WriteBottom:
 
     rts
 
+.enum State
+    Menu
+    Input
+    Help
+    Load
+    Clear
+    Run
+.endenum
+
+    .include "keyboard.asm"
+    .include "state-input.asm"
+    .include "state-help.asm"
+    .include "state-menu.asm"
+    .include "state-clear.asm"
+    .include "state-load.asm"
+    .include "state-run.asm"
+
+; Frame code for each state
+EngineStates:
+    .word State_Menu
+    .word State_Input
+    .word State_Help
+    .word State_Load
+    .word State_Clear
+    .word State_Run
+    ;.word State_Complie
+    ;.word State_Run
+    ;.word State_Debug
+EngineStateCount = (* - EngineStates) / 2
+
+EngineStateInits:
+    .word Init_Menu
+    .word Init_StateInput
+    .word Init_StateHelp
+    .word Init_Load
+    .word Init_Clear
+    .word Init_Run
+    ;.word Init_StateComplie
+    ;.word Init_StateRun
+    ;.word Init_StateDebug
+EngineStateInitCount = (* - EngineStateInits) / 2
+.if EngineStateInitCount <> EngineStateCount
+    .error "EngineStateInitCount and EngineStateCount mismatch"
+.endif
+
+PaletteData:
+    .repeat 4
+    .byte $0F, $20, $10, $2D
+    .endrepeat
+
+SpritePaletteData:
+    .repeat 4
+    .byte $0F, $27, $17, $07
+    .endrepeat
+
+BorderTileData:
+    .include "border.i"
+    .byte $00
+
 BorderText:
     .word :+
     .word :++
@@ -514,6 +545,7 @@ BorderText:
     .word :+++++++
     .word :++++++++
     .word :+++++++++
+    .word :++++++++++
 
 :   .asciiz "Close"
 :   .asciiz "Code"
@@ -521,6 +553,7 @@ BorderText:
 :   .asciiz "Load Example"
 :   .asciiz "Menu"
 :   .asciiz "Pause"
+:   .asciiz "Run"
 :   .asciiz "Running"
 :   .asciiz "Step"
 :   .asciiz "Stop"
