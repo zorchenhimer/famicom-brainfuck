@@ -48,6 +48,19 @@ Init_StateInput:
     cpx #EditorLineCount
     bne @row
 
+    lda #Text::Code
+    jsr WriteTitle
+
+    lda #Text::Help
+    ldx #0
+    ldy #$11
+    jsr WriteBottom
+
+    lda #Text::Menu
+    ldx #9
+    ldy #$12
+    jsr WriteBottom
+
     rts
 
 State_Input:

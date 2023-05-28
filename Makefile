@@ -12,6 +12,8 @@ SOURCES = main.asm \
 		  state-help.asm \
 		  state-input.asm \
 		  state-menu.asm \
+		  state-load.asm \
+		  state-clear.asm \
 		  help.i \
 		  border.i
 

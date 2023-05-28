@@ -1,4 +1,4 @@
-Init_Menu:
+Init_Load:
     lda #.lobyte(PaletteData)
     sta AddressPointer1+0
     lda #.hibyte(PaletteData)
@@ -27,8 +27,8 @@ Init_Menu:
 
     ldx #0
 @items:
-    lda MenuItems+0, x
-    ora MenuItems+1, x
+    lda ExamplePrograms+0, x
+    ora ExamplePrograms+1, x
     beq @done
 
     lda AddressPointer1+1
@@ -36,15 +36,10 @@ Init_Menu:
     lda AddressPointer1+0
     sta $2006
 
-    lda MenuItems+0, x
+    lda ExamplePrograms+0, x
     sta AddressPointer2+0
-    lda MenuItems+1, x
+    lda ExamplePrograms+1, x
     sta AddressPointer2+1
-
-    lda MenuItems+2, x
-    ldy MenuLength
-    sta MenuState, y
-    inc MenuLength
 
     ldy #0
 @text:
@@ -66,10 +61,12 @@ Init_Menu:
 
     inx
     inx
-    inx
     jmp @items
 
 @done:
+
+    lda #0
+    sta MenuSelect
 
     lda MenuCursor+0
     sta SpriteZero+0
@@ -81,12 +78,16 @@ Init_Menu:
     lda #0
     sta SpriteZero+2
 
-    lda #Text::Menu
+    lda #Text::Load
     jsr WriteTitle
 
+    lda #Text::Menu
+    ldx #0
+    ldy #$12
+    jsr WriteBottom
     rts
 
-State_Menu:
+State_Load:
     jsr JustReadKeyboard
     jsr JustDecodeKeyboard
 
@@ -99,7 +100,7 @@ State_Menu:
 
     dec MenuSelect
     bpl :+
-    ldy #MenuLength
+    ldy #ExampleProgramCount
     dey
     sty MenuSelect
 
@@ -109,21 +110,20 @@ State_Menu:
 
     inc MenuSelect
     ldy MenuSelect
-    cpy #MenuLength
+    cpy #ExampleProgramCount
     bcc :+
     ldy #0
     sty MenuSelect
 
+:   cmp #$12
+    bne :+
+    lda #State::Menu
+    jmp ChangeState
+
 :   cmp #$0A
     bne :+
 
-    ldy MenuSelect
-    lda MenuState, y
-
-    ldy #0
-    sty MenuSelect
-
-    jmp ChangeState
+    jmp LoadSelected
 
 :   inx
     cpx BufferedLen
@@ -136,28 +136,73 @@ State_Menu:
     sta SpriteZero+0
     rts
 
-MenuCursor:
-    .repeat 10, i
-    .byte 56 + (16 * i)
-    .endrepeat
+LoadSelected:
+    jsr ClearCodeRam
+    jsr ClearCells
 
-MenuItems:
-    .word :+
-    .byte State::Input
+    lda MenuSelect
+    asl a
+    tax
 
-    .word :++
-    .byte State::Help
+    lda ExamplePrograms+0, x
+    sta AddressPointer1+0
+    lda ExamplePrograms+1, x
+    sta AddressPointer1+1
 
-    .word :+++
-    .byte State::Load
+    ldy #0
+@skip: ; look for end of text
+    lda (AddressPointer1), y
+    beq :+
+    iny
+    jmp @skip
+:
 
-    .word :++++
-    .byte State::Clear
+    iny
+    tya
+    clc
+    adc AddressPointer1+0
+    sta AddressPointer1+0
 
-MenuLength = (* - MenuItems) / 3
+    lda AddressPointer1+1
+    adc #0
+    sta AddressPointer1+1
+
+    lda #.lobyte(Code)
+    sta AddressPointer2+0
+    lda #.hibyte(Code)
+    sta AddressPointer2+1
+
+    ; load program
+    ldy #0
+@load:
+    lda (AddressPointer1), y
+    beq @done
+    sta (AddressPointer2), y
+
+    inc AddressPointer1+0
+    bne :+
+    inc AddressPointer1+1
+:
+
+    inc AddressPointer2+0
+    bne :+
+    inc AddressPointer2+1
+:
+    jmp @load
+
+@done:
+    lda #0
+    sta EditorRow
+    sta EditorCol
+
+    lda #State::Input
+    jmp ChangeState
+
+ExamplePrograms:
+    .word Prg_Hello
+ExampleProgramCount = (* - ExamplePrograms) / 2
     .word $0000 ; null terminated
 
-:   .asciiz "Start programming"
-:   .asciiz "View help"
-:   .asciiz "Load example program"
-:   .asciiz "Clear program"
+Prg_Hello:
+    .asciiz "Hello.bf"
+    .asciiz "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>."

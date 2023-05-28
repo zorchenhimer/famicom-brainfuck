@@ -17,6 +17,35 @@ EditorLineCount = 24
 EditorAbsStart = $2062
 
 CusrorTile = $84
+CenterDotTile = $86
+
+TitleAddress = $2042
+BorderStop = $A5
+BorderStart = $B6
+BottomTextAddr = $2362
+
+.enum TilesFunc
+F1 = $11
+F2
+F3
+F4
+F5
+F6
+F7
+F8
+.endenum
+
+.enum Text
+Close
+Code
+Help
+Load
+Menu
+Pause
+Running
+Step
+Stop
+.endenum
 
 .segment "ZEROPAGE"
 Sleeping: .res 1
@@ -359,12 +388,16 @@ ClearCells:
     .include "state-input.asm"
     .include "state-help.asm"
     .include "state-menu.asm"
+    .include "state-clear.asm"
+    .include "state-load.asm"
 
 ; Frame code for each state
 EngineStates:
     .word State_Menu
     .word State_Input
     .word State_Help
+    .word State_Load
+    .word State_Clear
     ;.word State_Complie
     ;.word State_Run
     ;.word State_Debug
@@ -374,6 +407,8 @@ EngineStateInits:
     .word Init_Menu
     .word Init_StateInput
     .word Init_StateHelp
+    .word Init_Load
+    .word Init_Clear
     ;.word Init_StateComplie
     ;.word Init_StateRun
     ;.word Init_StateDebug
@@ -395,3 +430,97 @@ SpritePaletteData:
 BorderTileData:
     .include "border.i"
     .byte $00
+
+; Text index in A
+WriteTitle:
+    asl a
+    tax
+    lda BorderText+0, x
+    sta AddressPointer1+0
+    lda BorderText+1, x
+    sta AddressPointer1+1
+
+    lda #.hibyte(TitleAddress)
+    sta $2006
+    lda #.lobyte(TitleAddress)
+    sta $2006
+
+    lda #BorderStop
+    sta $2007
+    ldy #0
+
+:
+    lda (AddressPointer1), y
+    beq :+
+    iny
+    sta $2007
+    jmp :-
+
+:
+    lda #BorderStart
+    sta $2007
+    rts
+
+; Text index in A
+; Column in X
+; Func key in Y
+WriteBottom:
+    stx TmpX
+
+    asl a
+    tax
+    lda BorderText+0, x
+    sta AddressPointer1+0
+    lda BorderText+1, x
+    sta AddressPointer1+1
+
+    clc
+    lda #.lobyte(BottomTextAddr)
+    adc TmpX
+    tax
+    lda #.hibyte(BottomTextAddr)
+    adc #0
+    sta $2006
+    stx $2006
+
+    lda #BorderStop
+    sta $2007
+
+    sty $2007
+    lda #CenterDotTile
+    sta $2007
+
+    ldy #0
+:
+    lda (AddressPointer1), y
+    beq :+
+    iny
+    sta $2007
+    jmp :-
+
+:
+    lda #BorderStart
+    sta $2007
+
+    rts
+
+BorderText:
+    .word :+
+    .word :++
+    .word :+++
+    .word :++++
+    .word :+++++
+    .word :++++++
+    .word :+++++++
+    .word :++++++++
+    .word :+++++++++
+
+:   .asciiz "Close"
+:   .asciiz "Code"
+:   .asciiz "Help"
+:   .asciiz "Load Example"
+:   .asciiz "Menu"
+:   .asciiz "Pause"
+:   .asciiz "Running"
+:   .asciiz "Step"
+:   .asciiz "Stop"
