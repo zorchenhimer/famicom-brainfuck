@@ -11,6 +11,7 @@ SOURCES = main.asm \
 		  keyboard.asm \
 		  state-help.asm \
 		  state-input.asm \
+		  state-menu.asm \
 		  help.i \
 		  border.i
 

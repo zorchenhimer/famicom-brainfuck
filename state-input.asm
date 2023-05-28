@@ -54,11 +54,6 @@ State_Input:
     jsr JustReadKeyboard
     jsr JustDecodeKeyboard
 
-    lda KeyboardThisFrame+7
-    and #%0001_0000
-    beq :+
-:
-
     ; Handle actions (movement, etc) before characters.
     ldx #0
 @actionLoop:
@@ -270,7 +265,11 @@ KeyReturn:
 :   rts
 
 KeyHelp:
-    lda #1
+    lda #State::Help
+    jmp ChangeState
+
+KeyMenu:
+    lda #State::Menu
     jmp ChangeState
 
 KeyFunctions:
@@ -292,6 +291,7 @@ KeyFunctions:
     .word $0000
     .word $0000
     .word KeyHelp
+    .word KeyMenu
 
     ; $0C-$19
     .repeat 8

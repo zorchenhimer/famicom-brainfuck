@@ -47,6 +47,9 @@ KeyboardThisFrame: .res 9
 EngineState: .res 1
 PreviousState: .res 1
 
+MenuState: .res 10 ; states of items
+MenuSelect: .res 1 ; current selection
+
 .segment "OAM"
 SpriteZero: .res 4
 Sprites: .res (64*4)-4
@@ -294,8 +297,6 @@ DrawTiledData:
 @done:
     rts
 
-    .include "keyboard.asm"
-
 ; Data is at AddressPointer1
 ; Length in X
 WritePaletteData:
@@ -347,15 +348,21 @@ ClearCells:
     rts
 
 .enum State
+    Menu
     Input
     Help
+    Load
+    Clear
 .endenum
 
+    .include "keyboard.asm"
     .include "state-input.asm"
     .include "state-help.asm"
+    .include "state-menu.asm"
 
 ; Frame code for each state
 EngineStates:
+    .word State_Menu
     .word State_Input
     .word State_Help
     ;.word State_Complie
@@ -364,6 +371,7 @@ EngineStates:
 EngineStateCount = (* - EngineStates) / 2
 
 EngineStateInits:
+    .word Init_Menu
     .word Init_StateInput
     .word Init_StateHelp
     ;.word Init_StateComplie
