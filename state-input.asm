@@ -19,6 +19,35 @@ Init_StateInput:
 
     jsr DrawTiledData
 
+    ; repopulate the screen
+    ldx #0 ;row
+@row:
+    txa
+    asl a
+    tay
+
+    lda EditorLinesRam+0, y
+    sta AddressPointer1+0
+    lda EditorLinesRam+1, y
+    sta AddressPointer1+1
+
+    lda EditorLinesPPU+1, y
+    sta $2006
+    lda EditorLinesPPU+0, y
+    sta $2006
+
+    ldy #0 ;column
+@col:
+    lda (AddressPointer1), y
+    sta $2007
+    iny
+    cpy #EditorLineLength
+    bne @col
+
+    inx
+    cpx #EditorLineCount
+    bne @row
+
     rts
 
 State_Input:
@@ -214,7 +243,7 @@ KeyLeft:
 KeyRight:
     lda EditorCol
     cmp #EditorLineLength-1
-    bne :+
+    bcs :+
     inc EditorCol
 :   rts
 
@@ -256,6 +285,12 @@ KeyFunctions:
     .word KeyDelete
     .word $0000
     .word KeyReturn ; $0A
+    .word $0000
+    .word $0000
+    .word $0000
+    .word $0000
+    .word $0000
+    .word $0000
     .word KeyHelp
 
     ; $0C-$19

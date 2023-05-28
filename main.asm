@@ -45,6 +45,7 @@ KeyboardLastFrame: .res 9
 KeyboardThisFrame: .res 9
 
 EngineState: .res 1
+PreviousState: .res 1
 
 .segment "OAM"
 SpriteZero: .res 4
@@ -67,7 +68,8 @@ EditorCol: .res 1
 .segment "CHR1"
 
 .segment "PRGRAM"
-Code: .res $1F00
+Code: .res EditorLineLength*EditorLineCount
+Compiled: .res EditorLineLength*EditorLineCount
 .segment "CELRAM"
 Cells: .res $100
 
@@ -183,7 +185,7 @@ RESET:
     sta $2000
 
     lda #0
-    jmp ChangeState_NoPla
+    jmp ChangeState
 
 Frame:
     lda EngineState
@@ -207,18 +209,11 @@ Frame:
     jmp (AddressPointer1)
 FrameReturnAddr = * - 1
 
-;FrameDone:
     jsr WaitForNMI
     jmp Frame
 
 ; Target state in A
 ChangeState:
-    ; Get rid of return addr here
-    ; so the caller doesn't need to.
-    pla
-    pla
-
-ChangeState_NoPla:
     cmp #EngineStateCount
     bcc :+
     ;
@@ -226,6 +221,14 @@ ChangeState_NoPla:
     ;
     brk
 :
+
+    ; reset the stack
+    ldx #$FF
+    txs
+
+    ldx EngineState
+    stx PreviousState
+
     sta EngineState
     asl a
     tax

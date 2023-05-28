@@ -37,7 +37,7 @@ State_Help:
 
     cmp #$11
     bne @next
-    lda #0
+    lda PreviousState
     jmp ChangeState
 @next:
     inx
