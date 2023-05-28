@@ -3,7 +3,7 @@
 nes2mapper 0
 nes2prg 1 * 16 * 1024
 nes2chr 1 * 8 * 1024
-;nes2wram 1 * 8 * 1024
+nes2wram 1 * 8 * 1024
 nes2mirror 'V'
 nes2tv 'N'
 nes2end
@@ -176,6 +176,9 @@ RESET:
     lda #$02
     sta $4014
 
+    jsr ClearCodeRam
+    jsr ClearCells
+
     lda #%1000_0000
     sta $2000
 
@@ -307,6 +310,39 @@ WritePaletteData:
     iny
     dex
     bne @loop
+    rts
+
+ClearCodeRam:
+    ldx #0
+@row:
+    txa
+    asl a
+    tay
+    lda EditorLinesRam+0, y
+    sta AddressPointer1+0
+    lda EditorLinesRam+1, y
+    sta AddressPointer1+1
+
+    ldy #0
+    lda #' '
+@col:
+    sta (AddressPointer1), y
+    iny
+    cpy #EditorLineLength
+    bcc @col
+
+    inx
+    cpx #EditorLineCount
+    bcc @row
+    rts
+
+ClearCells:
+    ldx #0
+    lda #0
+:
+    sta Cells, x
+    dex
+    bne :-
     rts
 
 .enum State

@@ -79,23 +79,11 @@ State_Input:
     inc BufferedLen
 
     lda EditorRow
-    asl a
-    tax
-    lda EditorLinesStart+0, x
-    clc
-    adc EditorCol
-    sta TmpY
-    lda EditorLinesStart+1, x
-    adc #0
     sta BufferedTiles, y
     iny
-
-    lda TmpY
+    lda EditorCol
     sta BufferedTiles, y
     iny
-
-    ldx TmpX
-
     lda KeyboardPressed, x
     sta BufferedTiles, y
 
@@ -125,6 +113,60 @@ State_Input:
     bne @keyloop
 @done:
 
+    lda BufferedLen
+    beq @skipTranslate
+
+    ; Translate buffer changes to PPU addresses
+    ; and apply to code in ram.
+    ; Buffer should countain sets of (Row, Col, Data)
+    ldx #0
+    stx TmpX
+@translateLoop:
+
+    ; find code pointer
+    lda BufferedTiles+0, x
+    asl a
+    tay
+
+    lda EditorLinesRam+0, y
+    clc
+    adc BufferedTiles+1, x
+    sta AddressPointer1+0
+
+    lda EditorLinesRam+1, y
+    adc #0
+    sta AddressPointer1+1
+
+    lda BufferedTiles+2, x
+
+    ; Update code
+    ldy #0
+    sta (AddressPointer1), y
+
+    ; Find PPU addr
+    lda BufferedTiles+0, x ; row
+    asl a
+    tay
+
+    lda EditorLinesPPU+0, y
+    clc
+    adc BufferedTiles+1, x ; col
+    sta BufferedTiles+1, x
+
+    lda EditorLinesPPU+1, y
+    adc #0
+    sta BufferedTiles+0, x
+
+    inx
+    inx
+    inx
+
+    inc TmpX
+    lda TmpX
+    cmp BufferedLen
+    bcc @translateLoop
+
+@skipTranslate:
     ; position cursor sprite
     ldx EditorRow
     lda EditorCursorRows, x
@@ -149,27 +191,18 @@ KeyDelete:
 :
     dey
     sty EditorCol
-    lda EditorRow
-    asl a
 
     ldx BufferedLen
     ldy Mult3, x
     inc BufferedLen
 
-    tax
-    clc
-    lda EditorLinesStart+0, x
-    adc EditorCol
-    sta TmpY
-    lda EditorLinesStart+1, x
-    adc #0
-    sta BufferedTiles, y
-    iny
-    lda TmpY
-    sta BufferedTiles, y
-    iny
+    lda EditorRow
+    sta BufferedTiles+0, x
+    lda EditorCol
+    sta BufferedTiles+1, x
     lda #' '
-    sta BufferedTiles, y
+    sta BufferedTiles+2, x
+
     rts
 
 KeyLeft:
@@ -181,7 +214,7 @@ KeyLeft:
 KeyRight:
     lda EditorCol
     cmp #EditorLineLength-1
-    beq :+
+    bne :+
     inc EditorCol
 :   rts
 
@@ -230,7 +263,7 @@ KeyFunctions:
     .word $0000
     .endrepeat
 
-EditorLinesStart:
+EditorLinesPPU:
     .repeat EditorLineCount, i
     .word EditorAbsStart+(i*32)
     .endrepeat
@@ -242,6 +275,13 @@ EditorCursorRows:
 EditorCursorCols:
     .repeat EditorLineLength, i
     .byte (8*2)+(i*8)
+    .endrepeat
+
+; Like EditorLinesPPU, but for
+; the code in ram instead of the PPU
+EditorLinesRam:
+    .repeat EditorLineCount, i
+    .word Code+(i*EditorLineLength)
     .endrepeat
 
 Mult3:
