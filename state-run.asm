@@ -19,6 +19,9 @@ Init_Run:
 
     jsr DrawTiledData
 
+    lda #Text::Running
+    jsr WriteTitle
+
     lda #Text::Stop
     ldx #0
     ldy #$11
@@ -100,7 +103,8 @@ Init_Run:
     lda EditorCursorCols, x
     sta SpriteZero+3
 
-    lda #CusrorTile
+    ;lda #CusrorTile
+    lda #0
     sta SpriteZero+1
 
     ; Put it behind the text
@@ -110,7 +114,203 @@ Init_Run:
     rts
 
 State_Run:
+
+    lda #.lobyte(Compiled)
+    sta AddressPointer2+0
+    lda #.hibyte(Compiled)
+    sta AddressPointer2+1
+
+    ldy #0
+    ldx #0 ; cell index
+@loop:
+    lda (AddressPointer2), y
+    beq RunDone
+
+    cmp #'+'
+    bne :+
+    inc Cells, x
+    jmp @next
+
+:   cmp #'-'
+    bne :+
+    dec Cells, x
+    jmp @next
+
+:   cmp #'<'
+    bne :+
+    dex
+    jmp @next
+
+:   cmp #'>'
+    bne :+
+    inx
+    jmp @next
+
+:   cmp #'['
+    bne :+
+    jsr LoopStart
+    jmp @next
+
+:   cmp #']'
+    bne :+
+    jsr LoopEnd
+    jmp @next
+
+:   cmp #'.'
+    bne :+
+    jsr PrintChar
+    jmp @next
+
+:   cmp #','
+    bne @next
+    jsr GetChar
+    jmp @next
+
+@next:
+    inc AddressPointer2+0
+    bne :+
+    inc AddressPointer2+1
+:
+    jmp @loop
+    brk ; what?
+
+RunDone:
+    lda #State::Done
+    jmp ChangeState
+
+LoopStart:
+    lda Cells, x
+    beq @find
     rts
+
+@find:   ; find closing bracket
+
+    lda #1
+    sta TmpX ; nesting
+@loop:
+    inc AddressPointer2+0
+    bne :+
+    inc AddressPointer2+1
+:
+    lda (AddressPointer2), y
+    bne :+
+    ;
+    ; TODO: display error.  close bracket not found.
+    ;
+    brk
+:
+
+    cmp #']'
+    bne :+
+    dec TmpX
+    bne :+
+    rts
+
+:   cmp #'['
+    bne :+
+    inc TmpX
+
+:   jmp @loop
+    rts
+
+LoopEnd:
+    lda Cells, x
+    bne :+
+    rts
+:
+    lda #1
+    sta TmpX ; nesting
+@loop:
+    sec
+    lda AddressPointer2+0
+    sbc #1
+    sta AddressPointer2+0
+    lda AddressPointer2+1
+    sbc #0
+    sta AddressPointer2+1
+
+    lda (AddressPointer2), y
+    bne :+
+    ;
+    ; TODO: display error.  open bracket not found.
+    ;
+    brk
+:
+    cmp #']'
+    bne :+
+    inc TmpX
+
+:   cmp #'['
+    bne :+
+    dec TmpX
+    bne :+
+    rts
+
+:   jmp @loop
+
+    lda #1
+    rts
+
+GetChar:
+    jsr JustDecodeKeyboard
+
+    lda PressedIdx
+    bmi :+
+    lda KeyboardPressed+0
+    sta Cells, x
+    rts
+:
+    ; don't return until we have something
+    jsr WaitForNMI
+    jmp GetChar
+
+PrintChar:
+    jsr WaitForNMI
+    stx TmpX
+
+    ldx BufferedLen
+    ldy Mult3, x
+    inc BufferedLen
+
+    lda EditorRow
+    asl a
+    tax
+
+    clc
+    lda EditorLinesPPU+0, x
+    adc EditorCol
+    sta BufferedTiles+1, y
+
+    lda EditorLinesPPU+1, x
+    adc #0
+    sta BufferedTiles+0, y
+
+    ldx TmpX
+    lda Cells, x
+    sta BufferedTiles+2, y
+
+    ; inc column and wrap to new line if needed
+    inc EditorCol
+    lda EditorCol
+    cmp #EditorLineLength
+    bcc :+
+    lda #0
+    sta EditorCol
+
+    inc EditorRow
+    lda EditorRow
+    cmp #EditorLineCount
+    bcc :+
+
+    dec EditorRow
+    lda #EditorLineLength-1
+    sta EditorCol
+:
+
+    ldx TmpX
+    ldy #0
+    rts
+
 
 PostNMI_Run:
     jsr JustReadKeyboard
@@ -129,3 +329,4 @@ PostNMI_Run:
     jmp ChangeState
 :
     rts
+

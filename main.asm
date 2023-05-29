@@ -38,6 +38,7 @@ F8
 .enum Text
 Close
 Code
+Done
 Help
 Load
 Menu
@@ -431,6 +432,12 @@ WriteTitle:
 :
     lda #BorderStart
     sta $2007
+
+    lda #$BD
+    .repeat 7
+    sta $2007
+    .endrepeat
+
     rts
 
 ; Text index in A
@@ -483,6 +490,7 @@ WriteBottom:
     Load
     Clear
     Run
+    Done
 .endenum
 
     .include "keyboard.asm"
@@ -492,6 +500,7 @@ WriteBottom:
     .include "state-clear.asm"
     .include "state-load.asm"
     .include "state-run.asm"
+    .include "state-done.asm"
 
 ; Frame code for each state
 EngineStates:
@@ -501,6 +510,7 @@ EngineStates:
     .word State_Load
     .word State_Clear
     .word State_Run
+    .word State_Done
     ;.word State_Complie
     ;.word State_Run
     ;.word State_Debug
@@ -513,6 +523,7 @@ EngineStateInits:
     .word Init_Load
     .word Init_Clear
     .word Init_Run
+    .word Init_Done
     ;.word Init_StateComplie
     ;.word Init_StateRun
     ;.word Init_StateDebug
@@ -546,9 +557,11 @@ BorderText:
     .word :++++++++
     .word :+++++++++
     .word :++++++++++
+    .word :+++++++++++
 
 :   .asciiz "Close"
 :   .asciiz "Code"
+:   .asciiz "Done"
 :   .asciiz "Help"
 :   .asciiz "Load Example"
 :   .asciiz "Menu"
