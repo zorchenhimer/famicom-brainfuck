@@ -131,6 +131,36 @@ JustReadKeyboard:
     inx
     cpx #9
     bne @readLoop
+
+    ; detect missing keyboard
+    lda #0
+    sta TmpX
+
+    lda #4
+    sta $4016
+    jsr KeyboardWait
+    lda $4017
+    and #$1E
+    cmp #$1E
+    bne @failed
+
+    lda #0
+    sta $4016
+    jsr KeyboardWait
+    lda $4017
+    and #$1E ; A should now be 0
+    bne @failed
+    rts
+
+@failed:
+
+    lda #0
+    ldx #0
+:
+    sta KeyboardThisFrame, x
+    inx
+    cpx #9
+    bne :-
     rts
 
 ; Decodes the keys in the two keyboard
@@ -289,7 +319,7 @@ KeyboardWait:
     rts ; 6
 
 KeyboardLayoutStd:
-    .byte "]", "[", $0A, $18, $10, $7F, $0F, $1D
+    .byte "]", "[", $0A, $18, $10, $7F, $0F, $09
     .byte $3B, ":", "@", $17, "^", "-", "/", "_"
     .byte "k", "l", "o", $16, "0", "p", ",", "."
     .byte "j", "u", "i", $15, "8", "9", "n", "m"
@@ -300,7 +330,7 @@ KeyboardLayoutStd:
     .byte $01, $02, $03, $0D, $1A, $08, " ", $04
 
 KeyboardLayoutStd_Shifted:
-    .byte "]", "[", $0A, $18, $10, $7F, $0F, $1D
+    .byte "]", "[", $0A, $18, $10, $7F, $0F, $09
     .byte $3B, "*", "@", $17, "^", "=", "?", "_"
     .byte "K", "L", "O", $16, "0", "P", "<", ">"
     .byte "J", "U", "I", $15, "(", ")", "N", "M"
