@@ -27,6 +27,8 @@ Init_Run:
     ldy #$11
     jsr WriteBottom
 
+    jsr ClearCells
+
     ; Clean the code and copy it to 'Compiled'
     lda #.lobyte(Code)
     sta AddressPointer1+0
@@ -252,17 +254,40 @@ LoopEnd:
     rts
 
 GetChar:
+    txa
+    pha
+
+    ; position cursor sprite
+    ldx EditorRow
+    lda EditorCursorRows, x
+    sta SpriteZero+0
+
+    ldx EditorCol
+    lda EditorCursorCols, x
+    sta SpriteZero+3
+
+    lda #CusrorTile
+    sta SpriteZero+1
+
+    ; Put it behind the text
+    lda #%0010_0000
+    sta SpriteZero+2
+@loop:
     jsr JustDecodeKeyboard
 
     lda PressedIdx
     bmi :+
+    pla
+    tax
     lda KeyboardPressed+0
     sta Cells, x
+    ldy #0
+    sty SpriteZero+1
     rts
 :
     ; don't return until we have something
     jsr WaitForNMI
-    jmp GetChar
+    jmp @loop
 
 PrintChar:
     jsr WaitForNMI
@@ -324,6 +349,10 @@ PostNMI_Run:
     lda #0
     pha
     plp
+
+    lda #0
+    sta EditorRow
+    sta EditorCol
 
     lda #State::Input
     jmp ChangeState

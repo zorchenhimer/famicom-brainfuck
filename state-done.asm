@@ -6,6 +6,10 @@ Init_Done:
     ldx #0
     ldy #$11
     jsr WriteBottom
+
+    lda #0
+    sta SpriteZero+1
+
     rts
 
 State_Done:
@@ -21,6 +25,11 @@ State_Done:
     lda KeyboardPressed, x
     cmp #$11
     bne :+
+
+    lda #0
+    sta EditorRow
+    sta EditorCol
+
     lda #State::Input
     jmp ChangeState
 :

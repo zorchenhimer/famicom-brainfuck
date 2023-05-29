@@ -200,9 +200,15 @@ LoadSelected:
 
 ExamplePrograms:
     .word Prg_Hello
+    .word Prg_Echo
 ExampleProgramCount = (* - ExamplePrograms) / 2
     .word $0000 ; null terminated
 
 Prg_Hello:
     .asciiz "Hello.bf"
     .asciiz "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>."
+    ;.asciiz "<,>++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>."
+
+Prg_Echo:
+    .asciiz "Echo.bf"
+    .asciiz "+[>,.<]"
