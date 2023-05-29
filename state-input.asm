@@ -303,7 +303,7 @@ KeyFunctions:
     .word $0000
     .word $0000
     .word KeyDelete
-    .word $0000
+    .word $0000 ; kana key
     .word KeyReturn ; $0A
     .word $0000
     .word $0000
