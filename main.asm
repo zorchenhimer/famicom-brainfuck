@@ -84,6 +84,9 @@ MenuSelect: .res 1 ; current selection
 ; Pointer to code for after NMI, but separate from frame
 PostNMI: .res 2
 
+; Set to non-zero to skip the fade in scene change
+SkipFade: .res 1
+
 .segment "OAM"
 SpriteZero: .res 4
 Sprites: .res (64*4)-4
@@ -212,6 +215,44 @@ RESET:
     bit $2002
     bpl :-
 
+    lda #$FF
+    sta SkipFade
+    lda #$00
+    jsr ClearAttrTable
+
+    lda #$3F
+    sta $2006
+    lda #$00
+    sta $2006
+
+    ldx #0
+:
+    lda BGPaletteData, x
+    sta $2007
+    inx
+    cpx #4
+    bne :-
+
+    lda #$3F
+    sta $2006
+    lda #$10
+    sta $2006
+
+    ldx #0
+:
+    lda SPPaletteData, x
+    sta $2007
+    inx
+    cpx #4
+    bne :-
+
+    ;lda #.lobyte(PaletteData)
+    ;sta AddressPointer1+0
+    ;lda #.hibyte(PaletteData)
+    ;sta AddressPointer1+1
+    ;ldx #32
+    ;jsr WritePaletteData
+
     ; Clear sprites
     ldx #0
     lda #$FF
@@ -260,6 +301,7 @@ FrameReturnAddr = * - 1
     jmp Frame
 
 ; Target state in A
+; SkipFade is used here
 ChangeState:
     cmp #EngineStateCount
     bcc :+
@@ -293,7 +335,22 @@ ChangeState:
     sta PostNMI+0
     sta PostNMI+1
 
+    lda SkipFade
+    bne :+
+
     jsr WaitForNMI
+    ldx #1
+    jsr FadePalette
+
+    jsr WaitForNMI
+    ldx #2
+    jsr FadePalette
+
+    jsr WaitForNMI
+    ldx #3
+    jsr FadePalette
+: ; fade skip
+
     lda #%0000_0000
     sta $2001
 
@@ -303,6 +360,29 @@ StateReturnAddr = * - 1
     jsr WaitForNMI
     lda #%0001_1110
     sta $2001
+
+    lda SkipFade
+    bne :+
+
+    jsr WaitForNMI
+    ldx #2
+    jsr FadePalette
+
+    jsr WaitForNMI
+    ldx #1
+    jsr FadePalette
+
+    jsr WaitForNMI
+    ldx #0
+    jsr FadePalette
+
+: ; fade skip
+
+    lda #%1000_0000
+    sta $2000
+
+    lda #0
+    sta SkipFade
 
     jmp Frame
 
@@ -483,6 +563,47 @@ WriteBottom:
 
     rts
 
+; A holds fill value
+ClearAttrTable:
+    ldy #$23
+    sty $2006
+    ldy #$C0
+    sty $2006
+
+    ldx #32
+
+:
+    sta $2007
+    sta $2007
+    dex
+    bne :-
+
+    rts
+
+; step in X
+FadePalette:
+    lda #$3F
+    sta $2006
+    lda #$01
+    sta $2006
+    lda BGPaletteFade, x
+    sta $2007
+
+    lda #$3F
+    sta $2006
+    lda #$11
+    sta $2006
+    lda SPPaletteFade, x
+    sta $2007
+
+    lda #0
+    sta $2005
+    sta $2005
+    lda #%1000_0000
+    sta $2000
+
+    rts
+
 .enum State
     Menu
     Input
@@ -532,15 +653,15 @@ EngineStateInitCount = (* - EngineStateInits) / 2
     .error "EngineStateInitCount and EngineStateCount mismatch"
 .endif
 
-PaletteData:
-    .repeat 4
+BGPaletteData:
     .byte $0F, $20, $10, $2D
-    .endrepeat
+BGPaletteFade:
+    .byte $20, $10, $2D, $0F
 
-SpritePaletteData:
-    .repeat 4
+SPPaletteData:
     .byte $0F, $27, $17, $07
-    .endrepeat
+SPPaletteFade:
+    .byte $27, $17, $07, $0F
 
 BorderTileData:
     .include "border.i"

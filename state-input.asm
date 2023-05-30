@@ -1,12 +1,4 @@
 Init_StateInput:
-    lda #.lobyte(PaletteData)
-    sta AddressPointer1+0
-    lda #.hibyte(PaletteData)
-    sta AddressPointer1+1
-    ldx #32
-
-    jsr WritePaletteData
-
     lda #.lobyte(BorderTileData)
     sta AddressPointer1+0
     lda #.hibyte(BorderTileData)
@@ -65,6 +57,22 @@ Init_StateInput:
     ldx #18
     ldy #$13
     jsr WriteBottom
+
+    ; Position sprite
+    ldx EditorRow
+    lda EditorCursorRows, x
+    sta SpriteZero+0
+
+    ldx EditorCol
+    lda EditorCursorCols, x
+    sta SpriteZero+3
+
+    lda #CusrorTile
+    sta SpriteZero+1
+
+    ; Put it behind the text
+    lda #%0010_0000
+    sta SpriteZero+2
     rts
 
 State_Input:

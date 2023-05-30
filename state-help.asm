@@ -1,12 +1,4 @@
 Init_StateHelp:
-    lda #.lobyte(PaletteData)
-    sta AddressPointer1+0
-    lda #.hibyte(PaletteData)
-    sta AddressPointer1+1
-    ldx #32
-
-    jsr WritePaletteData
-
     lda #.lobyte(HelpScreenData)
     sta AddressPointer1+0
     lda #.hibyte(HelpScreenData)
