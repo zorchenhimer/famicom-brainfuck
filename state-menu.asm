@@ -1,3 +1,6 @@
+LogoBrainAddr = $208C
+LogoEggplantAddr = $2090
+
 Init_Menu:
     lda #.lobyte(BorderTileData)
     sta AddressPointer1+0
@@ -10,12 +13,13 @@ Init_Menu:
     sta AddressPointer2+0
 
     jsr DrawTiledData
+    jsr DrawLogo
 
     ; Draw the menu items
-    lda #$20
-    sta AddressPointer1+1
-    lda #$E6
+    lda #.lobyte(MenuStartAddress)
     sta AddressPointer1+0
+    lda #.hibyte(MenuStartAddress)
+    sta AddressPointer1+1
 
     ldx #0
 @items:
@@ -130,7 +134,7 @@ State_Menu:
 
 MenuCursor:
     .repeat 10, i
-    .byte 56 + (16 * i)
+    .byte MenuCursorStart + (16 * i)
     .endrepeat
 
 MenuItems:

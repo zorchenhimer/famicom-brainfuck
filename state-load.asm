@@ -10,12 +10,13 @@ Init_Load:
     sta AddressPointer2+0
 
     jsr DrawTiledData
+    jsr DrawLogo
 
     ; Draw the menu items
-    lda #$20
-    sta AddressPointer1+1
-    lda #$E6
+    lda #.lobyte(MenuStartAddress)
     sta AddressPointer1+0
+    lda #.hibyte(MenuStartAddress)
+    sta AddressPointer1+1
 
     ldx #0
 @items:

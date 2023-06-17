@@ -24,6 +24,12 @@ BorderStop = $A5
 BorderStart = $B6
 BottomTextAddr = $2362
 
+MenuStartAddress = $2126
+; This is bound to MenuStartAddress.  The menu selections
+; should move in-step with changes to menu location
+; changse (only vertically).
+MenuCursorStart = (((MenuStartAddress-$2000) / 32)*8) - 1
+
 .enum TilesFunc
 F1 = $11
 F2
@@ -102,6 +108,8 @@ EditorCol: .res 1
 
 .segment "CHR0"
     .incbin "font.chr"
+    .incbin "brain.chr"
+    .incbin "eggplant.chr"
 
 .segment "CHR1"
 
@@ -230,7 +238,7 @@ RESET:
     lda BGPaletteData, x
     sta $2007
     inx
-    cpx #4
+    cpx #16
     bne :-
 
     lda #$3F
@@ -354,6 +362,22 @@ ChangeState:
     lda #%0000_0000
     sta $2001
 
+    ; Clear nametable
+    lda #$23
+    sta $2006
+    lda #$C0
+    sta $2006
+
+    lda #$00
+    ldx #16
+:
+    sta $2007
+    sta $2007
+    sta $2007
+    sta $2007
+    dex
+    bne :-
+
     jmp (AddressPointer1)
 StateReturnAddr = * - 1
 
@@ -472,6 +496,19 @@ ClearCodeRam:
 
     lda #0
     sta (AddressPointer1), y
+
+    rts
+
+; Clears a full page (256 bytes)
+; Start address in AddressPointer1
+ClearPage:
+    lda #0
+    ldy #128
+:
+    sta (AddressPointer1), y
+    sta (AddressPointer1), y
+    dey
+    bne :-
 
     rts
 
@@ -604,6 +641,81 @@ FadePalette:
 
     rts
 
+DrawLogo:
+    lda #.hibyte(LogoBrainAddr)
+    sta $2006
+    lda #.lobyte(LogoBrainAddr)
+    sta $2006
+    .repeat 3, i
+    lda #$D0 + i
+    sta $2007
+    .endrepeat
+
+    lda #.hibyte(LogoBrainAddr+32)
+    sta $2006
+    lda #.lobyte(LogoBrainAddr+32)
+    sta $2006
+    .repeat 4, i
+    lda #$D3 + i
+    sta $2007
+    .endrepeat
+
+    lda #.hibyte(LogoBrainAddr+(32*2))
+    sta $2006
+    lda #.lobyte(LogoBrainAddr+(32*2))
+    sta $2006
+    .repeat 4, i
+    lda #$D7 + i
+    sta $2007
+    .endrepeat
+
+    lda #.hibyte(LogoEggplantAddr)
+    sta $2006
+    lda #.lobyte(LogoEggplantAddr)
+    sta $2006
+    .repeat 2, i
+    lda #$DB + i
+    sta $2007
+    .endrepeat
+
+    lda #.hibyte(LogoEggplantAddr+32)
+    sta $2006
+    lda #.lobyte(LogoEggplantAddr+32)
+    sta $2006
+    .repeat 3, i
+    lda #$DD + i
+    sta $2007
+    .endrepeat
+
+    lda #.hibyte(LogoEggplantAddr+(32*2))
+    sta $2006
+    lda #.lobyte(LogoEggplantAddr+(32*2))
+    sta $2006
+    .repeat 4, i
+    lda #$E0 + i
+    sta $2007
+    .endrepeat
+
+    lda #.hibyte(LogoEggplantAddr+(32*3)+1)
+    sta $2006
+    lda #.lobyte(LogoEggplantAddr+(32*3)+1)
+    sta $2006
+    .repeat 2, i
+    lda #$E4 + i
+    sta $2007
+    .endrepeat
+
+    lda #$23
+    sta $2006
+    lda #$CB
+    sta $2006
+    lda #$55
+    sta $2007
+
+    lda #$AA
+    sta $2007
+    rts
+
 .enum State
     Menu
     Input
@@ -655,6 +767,8 @@ EngineStateInitCount = (* - EngineStateInits) / 2
 
 BGPaletteData:
     .byte $0F, $20, $10, $2D
+    .byte $0F, $16, $15, $26
+    .byte $0F, $23, $13, $2A
 BGPaletteFade:
     .byte $20, $10, $2D, $0F
 
