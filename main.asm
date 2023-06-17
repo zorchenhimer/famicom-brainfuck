@@ -3,7 +3,7 @@
 nes2mapper 0
 nes2prg 1 * 16 * 1024
 nes2chr 1 * 8 * 1024
-nes2wram 1 * 8 * 1024
+nes2bram 1 * 8 * 1024
 nes2mirror 'V'
 nes2tv 'N'
 nes2end
@@ -44,6 +44,7 @@ F8
 .enum Text
 Close
 Code
+Compiling
 Done
 Help
 Load
@@ -66,6 +67,7 @@ KeyboardHeld:    .res 8 ; keys being held this frame
 
 AddressPointer1: .res 2
 AddressPointer2: .res 2
+AddressPointer3: .res 2
 TmpA: .res 1
 TmpB: .res 1
 TmpX: .res 1
@@ -101,6 +103,10 @@ Sprites: .res (64*4)-4
 EditorRow: .res 1
 EditorCol: .res 1
 
+LoopStackIdx: .res 1
+LoopStackLo: .res 256
+LoopStackHi: .res 256
+
 .segment "VECTORS"
     .word NMI
     .word RESET
@@ -113,11 +119,14 @@ EditorCol: .res 1
 
 .segment "CHR1"
 
-.segment "PRGRAM"
+.segment "PRGRAMBOT"
+; stuff unaligned to pages
 Code: .res EditorLineLength*EditorLineCount+1
 Compiled: .res EditorLineLength*EditorLineCount+1
-.segment "CELRAM"
-Cells: .res $100
+
+.segment "PRGRAMTOP"
+; stuff aligned to pages
+Cells:          .res 256    ; runtime memory
 
 .segment "PAGE0"
 IRQ:
@@ -503,11 +512,10 @@ ClearCodeRam:
 ; Start address in AddressPointer1
 ClearPage:
     lda #0
-    ldy #128
+    ldy #0
 :
     sta (AddressPointer1), y
-    sta (AddressPointer1), y
-    dey
+    iny
     bne :-
 
     rts
@@ -724,6 +732,7 @@ DrawLogo:
     Clear
     Run
     Done
+    Compile
 .endenum
 
     .include "keyboard.asm"
@@ -734,6 +743,7 @@ DrawLogo:
     .include "state-load.asm"
     .include "state-run.asm"
     .include "state-done.asm"
+    .include "state-compile.asm"
 
 ; Frame code for each state
 EngineStates:
@@ -744,7 +754,7 @@ EngineStates:
     .word State_Clear
     .word State_Run
     .word State_Done
-    ;.word State_Complie
+    .word State_Compile
     ;.word State_Run
     ;.word State_Debug
 EngineStateCount = (* - EngineStates) / 2
@@ -757,7 +767,7 @@ EngineStateInits:
     .word Init_Clear
     .word Init_Run
     .word Init_Done
-    ;.word Init_StateComplie
+    .word Init_Compile
     ;.word Init_StateRun
     ;.word Init_StateDebug
 EngineStateInitCount = (* - EngineStateInits) / 2
@@ -793,9 +803,11 @@ BorderText:
     .word :+++++++++
     .word :++++++++++
     .word :+++++++++++
+    .word :++++++++++++
 
 :   .asciiz "Close"
 :   .asciiz "Code"
+:   .asciiz "Compiling"
 :   .asciiz "Done"
 :   .asciiz "Help"
 :   .asciiz "Load Example"

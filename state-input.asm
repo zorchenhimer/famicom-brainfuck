@@ -301,6 +301,10 @@ KeyRun:
     lda #State::Run
     jmp ChangeState
 
+KeyCompile:
+    lda #State::Compile
+    jmp ChangeState
+
 KeyFunctions:
     .word $0000 ; null
     .word KeyLeft
@@ -322,6 +326,7 @@ KeyFunctions:
     .word KeyHelp
     .word KeyMenu
     .word KeyRun
+    .word KeyCompile
 
     ; $0C-$19
     .repeat 8
