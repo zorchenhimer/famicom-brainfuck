@@ -150,8 +150,6 @@ Init_Compile:
     jmp @loop
 
 @done:
-    lda #0
-    sta (AddressPointer2), y
 
     ; Write change state code to end of program
     ldx #8
@@ -218,7 +216,7 @@ CompileInstr:
     ldx LoopStackIdx
     lda AddressPointer2+0
     clc
-    adc #5
+    adc #8
     sta LoopStackLo
     lda AddressPointer2+1
     adc #0
@@ -337,6 +335,7 @@ Instr_In: ; ,
 
 Instr_LoopStart: ; [
     .byte (@end - * - 1)
+    lda Cells, x
     .byte $D0, $03 ; bne @loop
     jmp $FFFF ; @loopend
 ;@loop:
@@ -348,6 +347,7 @@ Instr_LoopEnd: ; ]
     .byte (@end - * - 1)
 ;@loop:
     ; loop here
+    lda Cells, x
     .byte $F0, $03 ; beq @end
     ;jmp $FFFF ; @loop
     .byte $4C ; JMP
